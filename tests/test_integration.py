@@ -15,10 +15,14 @@ from graph_integration.integration import (
 
 class TestIntegration(unittest.TestCase):
     def setUp(self):
-        self.graph = Graph.from_edge_list([
-            ("A", "B", 4), ("A", "C", 2),
-            ("B", "C", 1), ("C", "D", 3),
-        ])
+        self.graph = Graph.from_edge_list(
+            [
+                ("A", "B", 4),
+                ("A", "C", 2),
+                ("B", "C", 1),
+                ("C", "D", 3),
+            ]
+        )
 
     def test_dijkstra(self):
         result = run_dijkstra(self.graph, "A")
@@ -39,9 +43,14 @@ class TestIntegration(unittest.TestCase):
         self.assertEqual(result.algorithm, "kruskal")
         self.assertEqual(result.total_weight, 6)
         self.assertEqual(len(result.edges), 3)
-        self.assertEqual({frozenset((u,v)) for u,v,_ in result.edges}, {
-            frozenset(("A","C")), frozenset(("B","C")), frozenset(("C","D")),
-        })
+        self.assertEqual(
+            {frozenset((u, v)) for u, v, _ in result.edges},
+            {
+                frozenset(("A", "C")),
+                frozenset(("B", "C")),
+                frozenset(("C", "D")),
+            },
+        )
 
     def test_algorithm_execution(self):
         dijkstra_result = run_dijkstra(self.graph, "A")
@@ -60,7 +69,7 @@ class TestIntegration(unittest.TestCase):
             run_bellman_ford(self.graph, "Z")
 
     def test_isolated_vertex_path(self):
-        graph = Graph.from_edge_list([(1,2,7)], vertices=[1,2,3])
+        graph = Graph.from_edge_list([(1, 2, 7)], vertices=[1, 2, 3])
         result = run_dijkstra(graph, 1)
         self.assertTrue(math.isinf(result.distances[3]))
         self.assertIsNone(result.path_to(3))
@@ -79,12 +88,12 @@ class TestIntegration(unittest.TestCase):
             run_bellman_ford(graph, "A")
 
     def test_kruskal_rejects_directed(self):
-        graph = Graph.from_edge_list([(0,1,1)], directed=True)
+        graph = Graph.from_edge_list([(0, 1, 1)], directed=True)
         with self.assertRaises(ValueError):
             run_kruskal(graph)
 
     def test_kruskal_rejects_disconnected(self):
-        graph = Graph.from_edge_list([(0,1,1)], vertices=[0,1,2])
+        graph = Graph.from_edge_list([(0, 1, 1)], vertices=[0, 1, 2])
         with self.assertRaises(ValueError):
             run_kruskal(graph)
 

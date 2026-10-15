@@ -1,4 +1,3 @@
-
 """Disjoint Set Union (Union-Find) data structure.
 
 This module provides a DisjointSetUnion class that efficiently

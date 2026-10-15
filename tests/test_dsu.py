@@ -1,4 +1,3 @@
-
 """Tests for the Disjoint Set Union implementation."""
 
 import pytest

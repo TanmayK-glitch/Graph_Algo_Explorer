@@ -4,43 +4,56 @@ import math
 import unittest
 
 from graph_integration.graph import Graph
-from src.algorithms.dijkstra import dijkstra
 from src.algorithms.bellman_ford import bellman_ford  # type: ignore[reportMissingImports]
+from src.algorithms.dijkstra import dijkstra
 from src.algorithms.kruskal import kruskal_mst  # type: ignore[reportMissingImports]
 
 
 class TestGraph(unittest.TestCase):
     def setUp(self):
-        self.g = Graph.from_edge_list([
-            ("A", "B", 4),
-            ("A", "C", 2),
-            ("B", "C", 1),
-            ("C", "D", 3),
-        ])
+        self.g = Graph.from_edge_list(
+            [
+                ("A", "B", 4),
+                ("A", "C", 2),
+                ("B", "C", 1),
+                ("C", "D", 3),
+            ]
+        )
 
     def test_adjacency_list(self):
-        self.assertEqual(self.g.to_adjacency_list(), {
-            "A": [("B", 4), ("C", 2)],
-            "B": [("A", 4), ("C", 1)],
-            "C": [("A", 2), ("B", 1), ("D", 3)],
-            "D": [("C", 3)],
-        })
+        self.assertEqual(
+            self.g.to_adjacency_list(),
+            {
+                "A": [("B", 4), ("C", 2)],
+                "B": [("A", 4), ("C", 1)],
+                "C": [("A", 2), ("B", 1), ("D", 3)],
+                "D": [("C", 3)],
+            },
+        )
 
     def test_matrix(self):
         vertices, matrix = self.g.to_adjacency_matrix()
         self.assertEqual(vertices, ["A", "B", "C", "D"])
-        self.assertEqual(matrix, [
-            [0, 4, 2, math.inf],
-            [4, 0, 1, math.inf],
-            [2, 1, 0, 3],
-            [math.inf, math.inf, 3, 0],
-        ])
+        self.assertEqual(
+            matrix,
+            [
+                [0, 4, 2, math.inf],
+                [4, 0, 1, math.inf],
+                [2, 1, 0, 3],
+                [math.inf, math.inf, 3, 0],
+            ],
+        )
 
     def test_edges_not_doubled(self):
-        self.assertEqual(self.g.to_edge_list(), [
-            ("A", "B", 4), ("A", "C", 2),
-            ("B", "C", 1), ("C", "D", 3),
-        ])
+        self.assertEqual(
+            self.g.to_edge_list(),
+            [
+                ("A", "B", 4),
+                ("A", "C", 2),
+                ("B", "C", 1),
+                ("C", "D", 3),
+            ],
+        )
         self.assertEqual((self.g.num_vertices, self.g.num_edges), (4, 4))
         self.assertAlmostEqual(self.g.density, 4 / 6)
 
@@ -109,11 +122,14 @@ class TestGraph(unittest.TestCase):
         mst, total = kruskal_mst(n, indexed_edges)
         self.assertEqual(total, 6)
         self.assertEqual(len(mst), n - 1)
-        self.assertEqual({frozenset((labels[u], labels[v])) for u, v, _ in mst}, {
-            frozenset(("A", "C")),
-            frozenset(("B", "C")),
-            frozenset(("C", "D")),
-        })
+        self.assertEqual(
+            {frozenset((labels[u], labels[v])) for u, v, _ in mst},
+            {
+                frozenset(("A", "C")),
+                frozenset(("B", "C")),
+                frozenset(("C", "D")),
+            },
+        )
 
     def test_negative_weight_supported_by_graph_but_not_dijkstra(self):
         g = Graph.from_edge_list([("A", "B", -2)], directed=True)

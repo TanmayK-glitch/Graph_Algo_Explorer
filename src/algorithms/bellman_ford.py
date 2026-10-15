@@ -76,18 +76,12 @@ def bellman_ford(graph: Graph, source: Vertex) -> BellmanFordResult:
             all_vertices.add(neighbor)
 
     if source not in all_vertices:
-        raise ValueError(
-            f"Source vertex {source!r} is not present in the graph"
-        )
+        raise ValueError(f"Source vertex {source!r} is not present in the graph")
 
     # Initialize distances and predecessors.
-    dist: dict[Vertex, float] = {
-        vertex: math.inf for vertex in all_vertices
-    }
+    dist: dict[Vertex, float] = {vertex: math.inf for vertex in all_vertices}
 
-    pred: dict[Vertex, Vertex | None] = {
-        vertex: None for vertex in all_vertices
-    }
+    pred: dict[Vertex, Vertex | None] = {vertex: None for vertex in all_vertices}
 
     dist[source] = 0.0
 
@@ -118,9 +112,7 @@ def bellman_ford(graph: Graph, source: Vertex) -> BellmanFordResult:
 
         for v, weight in neighbors:
             if dist[u] + weight < dist[v]:
-                raise ValueError(
-                    "Reachable negative-weight cycle detected"
-                )
+                raise ValueError("Reachable negative-weight cycle detected")
 
     return BellmanFordResult(
         source=source,
@@ -164,9 +156,7 @@ def _validate_graph(graph: Graph) -> None:
 
     for vertex, neighbors in graph.items():
         if not isinstance(neighbors, list):
-            raise ValueError(
-                f"Adjacency list for vertex {vertex!r} must be a list"
-            )
+            raise ValueError(f"Adjacency list for vertex {vertex!r} must be a list")
 
         for i, entry in enumerate(neighbors):
             if not isinstance(entry, (tuple, list)) or len(entry) != 2:
@@ -179,14 +169,10 @@ def _validate_graph(graph: Graph) -> None:
 
             if not isinstance(weight, (int, float)):
                 raise ValueError(
-                    f"Edge weight for {vertex!r} -> {neighbor!r} "
-                    "must be numeric"
+                    f"Edge weight for {vertex!r} -> {neighbor!r} must be numeric"
                 )
 
-            if isinstance(weight, float) and (
-                math.isnan(weight) or math.isinf(weight)
-            ):
+            if isinstance(weight, float) and (math.isnan(weight) or math.isinf(weight)):
                 raise ValueError(
-                    f"Edge weight for {vertex!r} -> {neighbor!r} "
-                    "must be finite"
+                    f"Edge weight for {vertex!r} -> {neighbor!r} must be finite"
                 )

@@ -47,7 +47,7 @@ def test_negative_cycle():
 
     try:
         bellman_ford(graph, "A")
-        assert False, "Expected a negative-cycle error"
+        raise AssertionError("Expected a negative-cycle error")
     except ValueError as error:
         assert "negative-weight cycle" in str(error)
 

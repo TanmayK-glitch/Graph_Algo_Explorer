@@ -38,14 +38,15 @@ class TestBenchmark(unittest.TestCase):
         self.assertEqual(a.to_edge_list(), b.to_edge_list())
 
     def test_reject_invalid_graph_settings(self):
-        for n, density in ((0, .2), (10, -1), (10, 1.1)):
+        for n, density in ((0, 0.2), (10, -1), (10, 1.1)):
             with self.subTest(n=n, density=density), self.assertRaises(ValueError):
                 generate_graph(n, density)
 
     def test_algorithms_agree(self):
         graph = generate_graph(20, 0.3, seed=99)
-        self.assertEqual(run_dijkstra(graph, 0).distances,
-                         run_bellman_ford(graph, 0).distances)
+        self.assertEqual(
+            run_dijkstra(graph, 0).distances, run_bellman_ford(graph, 0).distances
+        )
 
     def test_summary_has_every_configuration(self):
         algorithms, representations = run_benchmarks(
@@ -53,13 +54,23 @@ class TestBenchmark(unittest.TestCase):
         )
         self.assertEqual(len(algorithms), 2 * 3)
         self.assertEqual(len(representations), 2 * 3)
-        self.assertEqual({row["algorithm"] for row in algorithms},
-                         {"dijkstra", "bellman_ford", "kruskal"})
-        self.assertEqual({row["graph_representation"] for row in representations},
-                         {"adjacency_list", "adjacency_matrix", "edge_list"})
-        self.assertTrue(all(row["execution_status"] == "OK" for row in algorithms + representations))
-        self.assertTrue(all(row["repetitions"] == 2 for row in algorithms + representations))
-        self.assertTrue(all(row["execution_time_ms"] >= 0 for row in algorithms + representations))
+        self.assertEqual(
+            {row["algorithm"] for row in algorithms},
+            {"dijkstra", "bellman_ford", "kruskal"},
+        )
+        self.assertEqual(
+            {row["graph_representation"] for row in representations},
+            {"adjacency_list", "adjacency_matrix", "edge_list"},
+        )
+        self.assertTrue(
+            all(row["execution_status"] == "OK" for row in algorithms + representations)
+        )
+        self.assertTrue(
+            all(row["repetitions"] == 2 for row in algorithms + representations)
+        )
+        self.assertTrue(
+            all(row["execution_time_ms"] >= 0 for row in algorithms + representations)
+        )
 
     def test_csv_export(self):
         algorithms, representations = run_benchmarks(

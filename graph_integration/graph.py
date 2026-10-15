@@ -1,4 +1,3 @@
-
 """Common weighted graph representation for Dijkstra, Bellman-Ford and Kruskal.
 
 This module models a *simple* graph: no self-loops or parallel edges.
@@ -96,9 +95,7 @@ class Graph:
         order = self.vertices
         index = {vertex: i for i, vertex in enumerate(order)}
         n = len(order)
-        matrix: list[list[Weight | float]] = [
-            [math.inf] * n for _ in range(n)
-        ]
+        matrix: list[list[Weight | float]] = [[math.inf] * n for _ in range(n)]
         for i in range(n):
             matrix[i][i] = 0
         for source, neighbors in self._adj.items():
@@ -116,7 +113,9 @@ class Graph:
                     edges.append((source, target, weight))
         return edges
 
-    def to_kruskal_input(self) -> tuple[int, list[tuple[int, int, Weight]], list[Vertex]]:
+    def to_kruskal_input(
+        self,
+    ) -> tuple[int, list[tuple[int, int, Weight]], list[Vertex]]:
         """Return (vertex_count, indexed_edges, labels) for kruskal_mst().
 
         After Kruskal returns (u, v, weight) with integer IDs, decode the
@@ -176,7 +175,9 @@ class Graph:
                 seen_arcs.add(arc)
                 if not directed and target in graph._adj.get(source, {}):
                     if graph._adj[source][target] != weight:
-                        raise ValueError("Reverse undirected edges have different weights")
+                        raise ValueError(
+                            "Reverse undirected edges have different weights"
+                        )
                     continue
                 graph.add_edge(source, target, weight)
         return graph
@@ -216,7 +217,6 @@ class Graph:
 
         for i in range(n):
             for j in range(n):
-                if i != j and matrix[i][j] != math.inf:
-                    if directed or i < j:
-                        graph.add_edge(labels[i], labels[j], matrix[i][j])
+                if i != j and matrix[i][j] != math.inf and (directed or i < j):
+                    graph.add_edge(labels[i], labels[j], matrix[i][j])
         return graph
