@@ -1,228 +1,195 @@
-# Graph Algorithms Explorer
+# Graph Algorithms Explorer — Worklet 2
 
-A modular, tested Python implementation of fundamental graph algorithms,
-starting with **Dijkstra's shortest-path algorithm** backed by a
-custom **Min Heap**.
+A modular Python mini-project implementing and integrating graph algorithms for shortest paths and minimum spanning trees. Worklet 2 brings the individual algorithm modules together through a shared weighted-graph model and an integration API, with tests and reproducible benchmark scripts.
 
-> **Status:** Standalone module — designed for easy integration into a
-> larger graph-algorithm project.
+## Worklet 2 scope
 
----
+- **Dijkstra's algorithm** with a custom binary Min Heap for shortest paths with non-negative edge weights.
+- **Bellman–Ford** for shortest paths with negative edge weights and detection of reachable negative-weight cycles.
+- **Kruskal's algorithm** for a minimum spanning tree (MST), supported by **Disjoint Set Union (Union-Find)**.
+- A common `Graph` model, adapters, standardized results, input validation, tests, and benchmark tooling.
+- Conversion of the shared graph model to adjacency-list, adjacency-matrix, and edge-list representations.
 
-## Implemented Algorithms
+## Architecture
 
-| Algorithm | Module | Complexity |
-|-----------|--------|------------|
-| **Min Heap** (binary) | `src/algorithms/min_heap.py` | insert O(log n), extract O(log n), peek O(1) |
-| **Dijkstra's Algorithm** | `src/algorithms/dijkstra.py` | O((V + E) log V) |
-
----
-
-## Project Structure
-
-```
+```text
 Graph_Algo_Explorer/
 ├── src/
-│   ├── __init__.py
 │   └── algorithms/
-│       ├── __init__.py
-│       ├── min_heap.py        # Reusable MinHeap class
-│       └── dijkstra.py        # Dijkstra + path reconstruction
+│       ├── min_heap.py       # Binary min-heap
+│       ├── dijkstra.py       # Dijkstra + path reconstruction
+│       ├── bellman_ford.py   # Bellman–Ford + negative-cycle detection
+│       ├── dsu.py            # Disjoint Set Union / Union-Find
+│       └── kruskal.py        # Kruskal MST
+├── graph_integration/
+│   ├── graph.py              # Shared weighted Graph model and conversions
+│   ├── integration.py        # Adapters and standardized result objects
+│   └── benchmark.py          # Algorithm and representation benchmarks
 ├── tests/
-│   ├── test_min_heap.py       # MinHeap unit tests
-│   └── test_dijkstra.py       # Dijkstra unit tests
-├── examples/
-│   ├── __init__.py
-│   └── example_dijkstra.py    # Runnable demo
-├── pyproject.toml             # Project metadata & Ruff config
-├── .gitignore
-└── README.md
+│   ├── test_min_heap.py
+│   ├── test_dijkstra.py
+│   ├── test_bellman_ford.py
+│   ├── test_dsu.py
+│   ├── test_kruskal.py
+│   ├── test_graph.py
+│   ├── test_integration.py
+│   ├── test_benchmark.py
+│   └── test_reference_verification.py
+└── pyproject.toml
 ```
 
----
+## Algorithms and complexity
 
-## Requirements
+| Component | Purpose | Time complexity |
+|---|---|---|
+| Min Heap | Priority queue used by Dijkstra | Insert/extract: O(log n); peek: O(1) |
+| Dijkstra | Single-source shortest paths with non-negative weights | O((V + E) log V) |
+| Bellman–Ford | Single-source shortest paths; supports negative edges | O(VE) |
+| Disjoint Set Union | Tracks connected components during MST construction | Find/union: O(α(V)) amortized |
+| Kruskal | Minimum spanning tree for a connected, undirected graph | O(E log E) |
 
-- **Python 3.10+**
-- No external runtime dependencies.
-- [Ruff](https://docs.astral.sh/ruff/) (optional) for formatting and
-  linting.
+`V` denotes vertices, `E` edges, and `α` the inverse Ackermann function. Actual performance depends on graph structure and implementation details.
 
----
+## Shared graph model and integration
 
-## Quick Start
+`graph_integration.graph.Graph` provides a common weighted graph representation. It supports directed or undirected graphs, hashable vertex labels, finite numeric weights, isolated vertices, and conversions to:
 
-### MinHeap Usage
+- **Adjacency list** — stores each vertex's neighbors and weights.
+- **Adjacency matrix** — a `V × V` matrix; infinity represents a missing edge, while zero-weight edges remain valid.
+- **Edge list** — a list of `(source, target, weight)` edges.
+
+The current graph model rejects self-loops and duplicate edges. Dijkstra rejects negative weights. Bellman–Ford permits negative weights but raises an error when a negative-weight cycle is reachable from the selected source. Kruskal requires a connected, undirected graph to produce an MST.
+
+`graph_integration.integration` exposes:
+
+- `run_dijkstra(graph, source)`
+- `run_bellman_ford(graph, source)`
+- `run_kruskal(graph)`
+
+The shortest-path wrappers return a `ShortestPathResult` containing the algorithm name, source, distances, predecessors, and `path_to(target)` helper. Unreachable vertices have distance `math.inf`, and `path_to` returns `None` for an unreachable target. Kruskal returns an `MSTResult` with selected edges and total weight, retaining the graph's original vertex labels.
+
+## Quick start
+
+Run commands from the repository root.
 
 ```python
-from src.algorithms.min_heap import MinHeap
+from graph_integration.graph import Graph
+from graph_integration.integration import (
+    run_dijkstra,
+    run_bellman_ford,
+    run_kruskal,
+)
 
-heap = MinHeap()
-heap.insert(5, "task-low")
-heap.insert(1, "task-high")
-heap.insert(3, "task-mid")
+# Non-negative weighted graph for shortest paths and MST
+graph = Graph(directed=False)
+graph.add_edge("A", "B", 4)
+graph.add_edge("A", "C", 1)
+graph.add_edge("C", "B", 2)
+graph.add_edge("B", "D", 1)
+graph.add_edge("C", "D", 5)
 
-print(heap.peek_min())  # (1, 'task-high')
-print(heap.extract_min())  # (1, 'task-high')
-print(len(heap))  # 2
+shortest_paths = run_dijkstra(graph, "A")
+print(shortest_paths.distances)
+print(shortest_paths.path_to("D"))
+
+mst = run_kruskal(graph)
+print(mst.edges)
+print(mst.total_weight)
 ```
 
-**Key properties:**
-
-- Stores `(priority, item)` pairs; lower priority = extracted first.
-- Supports negative and duplicate priorities.
-- Uses an insertion counter as a tie-breaker so **items are never
-  compared** — any hashable or unhashable object is safe.
-- Raises `IndexError` on peek/extract from an empty heap.
-
-### Dijkstra Usage
-
-#### Graph Input Format
-
-A graph is a `dict` mapping each vertex to a list of
-`(neighbor, weight)` tuples:
+For Bellman–Ford with negative edges, create a directed graph that has no reachable negative-weight cycle:
 
 ```python
-graph = {
-    "A": [("B", 4), ("C", 1)],
-    "B": [("D", 1)],
-    "C": [("B", 2), ("D", 5)],
-    "D": [],
-}
-```
+from graph_integration.graph import Graph
+from graph_integration.integration import run_bellman_ford
 
-Vertices that appear only as neighbors (no key in the dict) are
-treated as having no outgoing edges.
+graph = Graph(directed=True)
+graph.add_edge("A", "B", 4)
+graph.add_edge("A", "C", 5)
+graph.add_edge("B", "C", -2)
+graph.add_edge("C", "D", 3)
 
-#### Computing Shortest Paths
-
-```python
-from src.algorithms.dijkstra import dijkstra, reconstruct_path
-
-result = dijkstra(graph, "A")
-
-# Distances from source
+result = run_bellman_ford(graph, "A")
 print(result.distances)
-# {'A': 0, 'B': 3, 'C': 1, 'D': 4}
-
-# Shortest path from A to D
-path = reconstruct_path(result, "D")
-print(path)  # ['A', 'C', 'B', 'D']
+print(result.path_to("D"))
 ```
 
-#### Return Values
+## Testing and code quality
 
-`dijkstra()` returns a **`DijkstraResult`** dataclass:
+Run the complete test suite:
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `source` | `Hashable` | The source vertex |
-| `distances` | `dict[Vertex, float]` | Shortest distance from source (`math.inf` if unreachable) |
-| `predecessors` | `dict[Vertex, Vertex \| None]` | Predecessor on the shortest path (`None` for source and unreachable vertices) |
-
-#### Path Reconstruction
-
-```python
-path = reconstruct_path(result, target)
+```powershell
+py -m pytest tests/ -v
 ```
 
-- Returns a `list` of vertices from source to target (inclusive).
-- Returns `None` if the target is unreachable.
-- A source-to-source query returns `[source]`.
+Run Ruff formatting and lint checks:
 
----
-
-## Running the Example
-
-```bash
-python -m examples.example_dijkstra
+```powershell
+py -m ruff format --check .
+py -m ruff check .
 ```
 
-Expected output:
+The latest recorded validation completed successfully: **88 tests passed, with 11 subtests**; Ruff formatting and lint checks also passed. The reference-verification tests compare Dijkstra and Bellman–Ford distances with an independent Floyd–Warshall implementation on selected small graphs. The test suite provides correctness evidence for its covered cases; it should not be interpreted as exhaustive proof for all possible inputs.
 
-```
-Shortest distances from 'A':
-  A: 0.0
-  B: 3.0
-  C: 1.0
-  D: 4.0
+## Benchmarking
 
-Shortest path from 'A' to 'D':
-  A -> C -> B -> D
-  Total distance: 4.0
+The benchmark script measures the algorithm wrappers and the cost of converting the shared graph into different representations.
+
+Example command:
+
+```powershell
+py -m graph_integration.benchmark --sizes 10 50 100 500 1000 --densities 0.05 0.2 --repeats 10 --output benchmark_final
 ```
 
----
+The output directory contains:
 
-## Running the Tests
+- `algorithms.csv` — timing summaries for Dijkstra, Bellman–Ford, and Kruskal.
+- `representations.csv` — timing summaries for graph-to-representation conversions.
 
-```bash
-python -m unittest discover -s tests -v
-```
+The algorithm timings include the integration/input-adaptation cost but exclude graph generation. The representation timings measure **conversion only**; they do not represent running the shortest-path algorithms natively on an adjacency matrix.
 
----
+### Recorded benchmark snapshot
 
-## Ruff Formatting & Linting
+On the recorded run with 1,000 vertices and 10 repetitions:
 
-```bash
-# Format
-ruff format .
+| Algorithm | Edges | Mean execution time |
+|---|---:|---:|
+| Dijkstra | 24,975 | 19.92 ms |
+| Bellman–Ford | 24,975 | 27.78 ms |
+| Kruskal | 24,975 | 10.80 ms |
+| Dijkstra | 99,900 | 132.97 ms |
+| Bellman–Ford | 99,900 | 271.16 ms |
+| Kruskal | 99,900 | 81.27 ms |
 
-# Check formatting (CI-friendly)
-ruff format --check .
+For the same run, graph-to-representation conversion at 1,000 vertices produced these mean timings:
 
-# Lint
-ruff check .
+| Representation | Edges: 24,975 | Edges: 99,900 |
+|---|---:|---:|
+| Adjacency list | 2.74 ms | 28.59 ms |
+| Adjacency matrix | 9.88 ms | 32.75 ms |
+| Edge list | 4.20 ms | 32.94 ms |
 
-# Lint and auto-fix
-ruff check --fix .
-```
+These figures describe one benchmark run and machine/environment, not universal performance guarantees. The generated benchmark graphs are connected, undirected, and have positive weights; a spanning tree is added, so actual density can be higher than a requested density when needed to ensure connectivity.
 
-Ruff is configured in `pyproject.toml`.
+## Representation trade-offs
 
----
+| Representation | Typical space | Strength | Trade-off |
+|---|---|---|---|
+| Adjacency list | O(V + E) | Efficient storage and neighbor traversal for sparse graphs | Checking a particular edge can require searching a neighbor list |
+| Adjacency matrix | O(V²) | Edge lookup in O(1) | Higher memory use; scanning neighbors takes O(V) |
+| Edge list | O(V + E) | Convenient for processing or sorting edges, as in Kruskal | Finding all neighbors of one vertex is less direct |
 
-## Algorithm Details
+The benchmark currently compares the cost of producing these representations from the shared graph object. It does not implement or benchmark a separate matrix-native Dijkstra or Bellman–Ford algorithm.
 
-### Min Heap
+## Limitations and assumptions
 
-A standard binary min-heap stored in a flat list. Each entry is a
-`(priority, counter, item)` triple internally; the counter provides
-FIFO ordering for equal priorities without comparing items.
+- The shared graph model represents a simple graph: self-loops and parallel edges are not supported.
+- Dijkstra requires non-negative edge weights.
+- Bellman–Ford reports a reachable negative-weight cycle as a `ValueError`; shortest-path distances are not returned for that case.
+- Kruskal produces an MST only for a connected, undirected graph.
+- Benchmark results depend on the environment, graph size, and density.
+- Reference verification covers selected small shortest-path cases; MST correctness is covered by the Kruskal and integration unit tests rather than the Floyd–Warshall reference test.
 
-| Operation | Time |
-|-----------|------|
-| `insert` | O(log n) |
-| `extract_min` | O(log n) |
-| `peek_min` | O(1) |
-| `is_empty` | O(1) |
-| `size` / `len` | O(1) |
+## Worklet 2 completion summary
 
-### Dijkstra's Algorithm
-
-Single-source shortest paths using a binary min-heap as the priority
-queue. The algorithm:
-
-1. Initialises the source distance to 0 and all others to ∞.
-2. Pushes the source onto the heap.
-3. Extracts the minimum-distance vertex and relaxes its outgoing edges.
-4. Records predecessors whenever a shorter path is found.
-5. Skips stale heap entries (vertices already finalised).
-
-**Complexity:** O((V + E) log V) with an adjacency list and binary
-heap. Each edge relaxation may insert a new heap entry; the heap never
-exceeds O(E) entries, and since log E ∈ O(log V) for simple graphs,
-each operation costs O(log V).
-
-**Non-negative weights required.** The algorithm raises `ValueError`
-if any edge weight is negative.
-
----
-
-## Future Integration
-
-The public API (`dijkstra`, `reconstruct_path`, `MinHeap`) is
-deliberately simple and accepts plain Python dicts and lists. When
-integrating into a larger project (e.g., with a shared `Graph` class),
-a thin adapter can translate between representations without changing
-the core algorithm.
+The integrated project combines the three requested graph-algorithm workflows with a shared graph abstraction, representation adapters, standardized outputs, automated tests, and benchmark CSV generation. The repository's latest recorded checks passed: 88 tests plus 11 subtests, Ruff formatting check, and Ruff lint check.
