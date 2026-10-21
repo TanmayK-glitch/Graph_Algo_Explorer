@@ -302,5 +302,43 @@ class TestRadixHeapRandomizedHeapq(unittest.TestCase):
             self.assertTrue(rh.is_empty())
 
 
+class TestRadixHeapAdditionalEdgeCases(unittest.TestCase):
+    """Bucket boundary keys, jumps with nonzero d_last, and repr."""
+
+    def test_power_of_two_boundary_keys(self) -> None:
+        """Keys exactly on power-of-two bucket boundaries."""
+        rh = RadixHeap()
+        keys = [0, 1, 2, 3, 4, 7, 8, 15, 16, 31, 32, 63, 64]
+        for k in reversed(keys):
+            rh.insert(k, f"val_{k}")
+
+        extracted = [rh.extract_min()[0] for _ in range(len(keys))]
+        self.assertEqual(extracted, keys)
+
+    def test_large_jump_with_nonzero_dlast(self) -> None:
+        """Insert a large key after d_last has advanced past zero."""
+        rh = RadixHeap()
+        rh.insert(10, "ten")
+        key, _ = rh.extract_min()
+        self.assertEqual(key, 10)  # d_last is now 10
+
+        # Now insert items with large differences relative to d_last=10
+        big = 10 + 10**18
+        rh.insert(big, "big")
+        rh.insert(10 + 500, "medium")
+        rh.insert(10, "same")
+
+        self.assertEqual(rh.extract_min(), (10, "same"))
+        self.assertEqual(rh.extract_min(), (510, "medium"))
+        self.assertEqual(rh.extract_min(), (big, "big"))
+
+    def test_repr(self) -> None:
+        rh = RadixHeap()
+        self.assertIn("d_last=0", repr(rh))
+        self.assertIn("size=0", repr(rh))
+        rh.insert(5, "x")
+        self.assertIn("size=1", repr(rh))
+
+
 if __name__ == "__main__":
     unittest.main()

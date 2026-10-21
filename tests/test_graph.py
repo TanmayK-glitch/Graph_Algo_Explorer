@@ -137,6 +137,43 @@ class TestGraph(unittest.TestCase):
         with self.assertRaises(ValueError):
             dijkstra(g.to_adjacency_list(), "A")
 
+    def test_density_boundaries(self):
+        """Density must be 0.0 for n < 2 and 1.0 for a complete graph."""
+        self.assertEqual(Graph().density, 0.0)
+        g1 = Graph()
+        g1.add_vertex("X")
+        self.assertEqual(g1.density, 0.0)
+        # Complete graph K3
+        k3 = Graph()
+        k3.add_edge("A", "B", 1)
+        k3.add_edge("B", "C", 2)
+        k3.add_edge("C", "A", 3)
+        self.assertEqual(k3.density, 1.0)
+
+    def test_from_adjacency_matrix_directed_asymmetric(self):
+        """Directed graphs can be built from asymmetric matrices."""
+        matrix = [[0, 5], [math.inf, 0]]
+        g = Graph.from_adjacency_matrix(["A", "B"], matrix, directed=True)
+        self.assertEqual(g.to_adjacency_list(), {"A": [("B", 5)], "B": []})
+
+    def test_from_adjacency_matrix_validation(self):
+        """Matrix must be square, match vertex count, and have zero diagonal."""
+        with self.assertRaises(ValueError):
+            Graph.from_adjacency_matrix(["A"], [[1]])  # Non-zero diagonal
+        with self.assertRaises(ValueError):
+            Graph.from_adjacency_matrix(["A", "B"], [[0, 1]])  # Non-square
+        with self.assertRaises(ValueError):
+            Graph.from_adjacency_matrix(["A", "A"], [[0, 0], [0, 0]])  # Duplicate vertex
+
+    def test_to_kruskal_input_single_vertex(self):
+        """Single vertex graph produces 0 edges for Kruskal."""
+        g = Graph()
+        g.add_vertex("A")
+        count, edges, labels = g.to_kruskal_input()
+        self.assertEqual(count, 1)
+        self.assertEqual(edges, [])
+        self.assertEqual(labels, ["A"])
+
 
 if __name__ == "__main__":
     unittest.main()

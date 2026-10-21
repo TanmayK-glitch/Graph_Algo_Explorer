@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import unittest
 
 from src.algorithms.min_heap import MinHeap
@@ -156,6 +157,52 @@ class TestMinHeapInvariant(unittest.TestCase):
             else:
                 heap.extract_min()
         self.assertTrue(self._is_valid_min_heap(heap._data))
+
+
+class TestMinHeapAdditional(unittest.TestCase):
+    """Float priorities, infinity, and heap drain-and-reuse."""
+
+    def test_float_and_infinity_priorities(self) -> None:
+        heap = MinHeap()
+        heap.insert(math.inf, "inf")
+        heap.insert(1.5, "one_half")
+        heap.insert(-math.inf, "neg_inf")
+        heap.insert(0.0, "zero")
+
+        extracted = [heap.extract_min() for _ in range(4)]
+        self.assertEqual(
+            extracted,
+            [
+                (-math.inf, "neg_inf"),
+                (0.0, "zero"),
+                (1.5, "one_half"),
+                (math.inf, "inf"),
+            ],
+        )
+
+    def test_drain_and_reuse(self) -> None:
+        heap = MinHeap()
+        for i in [5, 1, 3]:
+            heap.insert(i, str(i))
+        while not heap.is_empty():
+            heap.extract_min()
+        self.assertTrue(heap.is_empty())
+        self.assertEqual(len(heap), 0)
+
+        # Re-insert and verify normal operation
+        heap.insert(10, "ten")
+        heap.insert(2, "two")
+        self.assertEqual(len(heap), 2)
+        self.assertEqual(heap.extract_min(), (2, "two"))
+        self.assertEqual(heap.extract_min(), (10, "ten"))
+
+    def test_peek_preserves_insertion_order_tie_breaking(self) -> None:
+        heap = MinHeap()
+        heap.insert(5, "first")
+        heap.insert(5, "second")
+        self.assertEqual(heap.peek_min(), (5, "first"))
+        self.assertEqual(heap.extract_min(), (5, "first"))
+        self.assertEqual(heap.peek_min(), (5, "second"))
 
 
 if __name__ == "__main__":

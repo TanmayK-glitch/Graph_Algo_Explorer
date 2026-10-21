@@ -62,3 +62,32 @@ def test_union_by_rank():
 def test_negative_size():
     with pytest.raises(ValueError):
         DisjointSetUnion(-1)
+
+
+def test_self_union():
+    """Union of an element with itself must return False and preserve rank."""
+    dsu = DisjointSetUnion(3)
+    assert dsu.union(1, 1) is False
+    assert dsu.rank[1] == 0
+
+
+def test_deep_chain_compression():
+    """Verify full path flattening on a sequential chain of 100 elements."""
+    n = 100
+    dsu = DisjointSetUnion(n)
+    for i in range(n - 1):
+        dsu.union(i, i + 1)
+
+    root = dsu.find(n - 1)
+    # After finding, every element's parent should point directly to the root
+    for i in range(n):
+        assert dsu.find(i) == root
+        assert dsu.parent[i] == root
+
+
+def test_repr():
+    dsu = DisjointSetUnion(2)
+    rep = repr(dsu)
+    assert "DisjointSetUnion" in rep
+    assert "parent" in rep
+    assert "rank" in rep

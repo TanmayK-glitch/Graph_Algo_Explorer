@@ -110,6 +110,30 @@ class TestIntegration(unittest.TestCase):
         run_kruskal(self.graph)
         self.assertEqual(self.graph.to_adjacency_list(), before)
 
+    def test_shortest_path_result_path_to_edge_cases(self):
+        """path_to for source-to-source and non-existent targets."""
+        result = run_dijkstra(self.graph, "A")
+        self.assertEqual(result.path_to("A"), ["A"])
+        self.assertIsNone(result.path_to("NONEXISTENT"))
+
+    def test_kruskal_single_vertex(self):
+        """Kruskal on single-vertex graph returns 0 edges and 0 weight."""
+        g = Graph()
+        g.add_vertex("A")
+        result = run_kruskal(g)
+        self.assertEqual(result.total_weight, 0)
+        self.assertEqual(result.edges, [])
+
+    def test_float_weights_through_integration(self):
+        """Float weights propagate accurately through Dijkstra and Bellman-Ford adapters."""
+        g = Graph()
+        g.add_edge("A", "B", 1.5)
+        g.add_edge("B", "C", 2.25)
+        d = run_dijkstra(g, "A")
+        b = run_bellman_ford(g, "A")
+        self.assertAlmostEqual(d.distances["C"], 3.75)
+        self.assertAlmostEqual(b.distances["C"], 3.75)
+
 
 if __name__ == "__main__":
     unittest.main()

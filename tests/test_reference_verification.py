@@ -5,6 +5,7 @@ import unittest
 
 from graph_integration.graph import Graph
 from graph_integration.integration import run_bellman_ford, run_dijkstra
+from src.algorithms.dijkstra_radix import dijkstra_radix
 
 
 def floyd_warshall(vertices, edges):
@@ -86,6 +87,35 @@ class TestReferenceVerification(unittest.TestCase):
                     reference[source][target],
                     msg=f"Incorrect distance from {source} to {target}",
                 )
+
+    def test_dijkstra_radix_against_floyd_warshall(self):
+        """Compare dijkstra_radix with Floyd-Warshall reference distances."""
+        vertices = [0, 1, 2, 3]
+        edges = [(0, 1, 5), (0, 2, 1), (2, 1, 1), (1, 3, 2)]
+        graph = Graph.from_edge_list(edges, vertices=vertices)
+        reference = floyd_warshall(vertices, edges)
+
+        for source in vertices:
+            result = dijkstra_radix(graph.to_adjacency_list(), source)
+            for target in vertices:
+                self.assertEqual(
+                    result.distances[target],
+                    reference[source][target],
+                )
+
+    def test_reference_verification_disconnected_graphs(self):
+        """Verify Dijkstra and Bellman-Ford match Floyd-Warshall on disconnected graphs."""
+        vertices = [0, 1, 2, 3]
+        edges = [(0, 1, 3)]  # 2 and 3 are isolated
+        graph = Graph.from_edge_list(edges, vertices=vertices)
+        reference = floyd_warshall(vertices, edges)
+
+        d_res = run_dijkstra(graph, 0)
+        b_res = run_bellman_ford(graph, 0)
+
+        for target in vertices:
+            self.assertEqual(d_res.distances[target], reference[0][target])
+            self.assertEqual(b_res.distances[target], reference[0][target])
 
 
 def floyd_warshall_directed(vertices, edges):

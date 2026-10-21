@@ -248,5 +248,36 @@ class TestDijkstraRadixResult(unittest.TestCase):
         self.assertIsNone(result.predecessors["A"])
 
 
+class TestDijkstraRadixAdditionalEdgeCases(unittest.TestCase):
+    """Zero-weight cycle and multi-component graphs for dijkstra_radix."""
+
+    def test_zero_weight_cycle(self) -> None:
+        """Graph with zero-weight cycle computes correct distances and terminates."""
+        graph = {
+            "A": [("B", 0)],
+            "B": [("A", 0), ("C", 5)],
+            "C": [],
+        }
+        result = dijkstra_radix(graph, "A")
+        self.assertEqual(result.distances["A"], 0)
+        self.assertEqual(result.distances["B"], 0)
+        self.assertEqual(result.distances["C"], 5)
+
+    def test_multi_component_disconnected_integers(self) -> None:
+        """Disconnected graph with integer IDs across separate components."""
+        graph = {
+            1: [(2, 10)],
+            2: [],
+            3: [(4, 20)],
+            4: [],
+        }
+        result = dijkstra_radix(graph, 1)
+        self.assertEqual(result.distances[1], 0)
+        self.assertEqual(result.distances[2], 10)
+        self.assertTrue(math.isinf(result.distances[3]))
+        self.assertTrue(math.isinf(result.distances[4]))
+        self.assertIsNone(reconstruct_path(result, 3))
+
+
 if __name__ == "__main__":
     unittest.main()
