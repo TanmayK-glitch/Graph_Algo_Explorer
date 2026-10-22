@@ -1,0 +1,7 @@
+# 4-cycle: bipartite
+UNDIRECTED
+UNWEIGHTED
+A B
+B C
+C D
+D A

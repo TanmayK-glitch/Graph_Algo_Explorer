@@ -1,0 +1,6 @@
+# Two components plus an isolated vertex
+UNDIRECTED
+UNWEIGHTED
+A B
+C D
+E   # isolated vertex

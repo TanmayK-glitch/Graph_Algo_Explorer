@@ -1,0 +1,6 @@
+# The model allows negative weights
+DIRECTED
+WEIGHTED
+A B -2.5
+B C 3
+A C 1.5

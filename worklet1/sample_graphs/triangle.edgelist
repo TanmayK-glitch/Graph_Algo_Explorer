@@ -1,0 +1,6 @@
+# Odd cycle: not bipartite
+UNDIRECTED
+UNWEIGHTED
+A B
+B C
+A C
