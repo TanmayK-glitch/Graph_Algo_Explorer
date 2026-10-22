@@ -65,3 +65,35 @@ def test_invalid_vertex():
 def test_negative_vertex_count():
     with pytest.raises(ValueError):
         kruskal_mst(-1, [])
+
+
+def test_parallel_edges():
+    """Kruskal must pick the minimum-weight edge among parallel edges."""
+    edges = [(0, 1, 10), (0, 1, 3)]
+    mst, total = kruskal_mst(2, edges)
+    assert total == 3
+    assert mst == [(0, 1, 3)]
+
+
+def test_equal_weight_edges():
+    """Graph with equal weight edges across cycles."""
+    edges = [(0, 1, 2), (1, 2, 2), (2, 3, 2), (3, 0, 2)]
+    mst, total = kruskal_mst(4, edges)
+    assert total == 6
+    assert len(mst) == 3
+
+
+def test_float_weights():
+    """Kruskal supports non-negative or negative floating-point weights."""
+    edges = [(0, 1, 1.5), (1, 2, 2.5), (0, 2, 5.0)]
+    mst, total = kruskal_mst(3, edges)
+    assert total == 4.0
+    assert len(mst) == 2
+
+
+def test_already_a_tree():
+    """A graph that is already a tree returns all its edges."""
+    edges = [(0, 1, 4), (1, 2, 3)]
+    mst, total = kruskal_mst(3, edges)
+    assert total == 7
+    assert len(mst) == 2

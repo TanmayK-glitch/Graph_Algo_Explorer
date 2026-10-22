@@ -216,5 +216,56 @@ class TestDijkstraResultType(unittest.TestCase):
             result.source = "X"  # type: ignore[misc]
 
 
+class TestDijkstraAdvancedCases(unittest.TestCase):
+    """Additional edge cases for Dijkstra."""
+
+    def test_positive_weight_cycles(self) -> None:
+        """Graph containing positive directed cycles must terminate and find shortest paths."""
+        graph = {
+            "A": [("B", 1)],
+            "B": [("C", 2)],
+            "C": [("A", 4), ("D", 3)],
+            "D": [],
+        }
+        result = dijkstra(graph, "A")
+        self.assertEqual(result.distances["A"], 0)
+        self.assertEqual(result.distances["B"], 1)
+        self.assertEqual(result.distances["C"], 3)
+        self.assertEqual(result.distances["D"], 6)
+        self.assertEqual(reconstruct_path(result, "D"), ["A", "B", "C", "D"])
+
+    def test_multi_component_disconnected_graph(self) -> None:
+        """Multiple disconnected components with reachable and unreachable partitions."""
+        graph = {
+            "A": [("B", 2)],
+            "B": [],
+            "C": [("D", 3)],
+            "D": [],
+            "E": [],
+        }
+        result = dijkstra(graph, "A")
+        self.assertEqual(result.distances["A"], 0)
+        self.assertEqual(result.distances["B"], 2)
+        self.assertTrue(math.isinf(result.distances["C"]))
+        self.assertTrue(math.isinf(result.distances["D"]))
+        self.assertTrue(math.isinf(result.distances["E"]))
+        self.assertIsNone(reconstruct_path(result, "C"))
+        self.assertIsNone(reconstruct_path(result, "D"))
+        self.assertIsNone(reconstruct_path(result, "E"))
+
+    def test_large_weights_and_floats(self) -> None:
+        """Correct shortest path with large integer and float weights."""
+        big = 10**14
+        graph = {
+            "A": [("B", big), ("C", 1.5)],
+            "B": [],
+            "C": [("B", 2.25)],
+        }
+        result = dijkstra(graph, "A")
+        self.assertEqual(result.distances["C"], 1.5)
+        self.assertEqual(result.distances["B"], 3.75)
+        self.assertEqual(reconstruct_path(result, "B"), ["A", "C", "B"])
+
+
 if __name__ == "__main__":
     unittest.main()
