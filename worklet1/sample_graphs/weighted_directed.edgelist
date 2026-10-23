@@ -1,0 +1,7 @@
+# Format v1 example from the design document
+DIRECTED
+WEIGHTED
+A B 4.0
+A C 2.0
+B D 1.0
+C D 5.0

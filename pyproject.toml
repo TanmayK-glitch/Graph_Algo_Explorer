@@ -21,9 +21,15 @@ select = [
     "RUF", # ruff-specific rules
 ]
 ignore = [
-    "E501",  # line-too-long (formatter handles it)
+"E501",  # line-too-long (formatter handles it)
+"N802",  # allow uppercase function names in imported Worklet 1 tests
+"N803",  # allow uppercase argument names in imported Worklet 1 tests
 ]
+
 
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]

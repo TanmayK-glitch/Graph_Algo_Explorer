@@ -1,0 +1,7 @@
+# Contains the cycle A->B->C->A
+DIRECTED
+UNWEIGHTED
+A B
+B C
+C A
+C D

@@ -15,10 +15,14 @@ from graph_integration.integration import (
 
 class TestIntegration(unittest.TestCase):
     def setUp(self):
-        self.graph = Graph.from_edge_list([
-            ("A", "B", 4), ("A", "C", 2),
-            ("B", "C", 1), ("C", "D", 3),
-        ])
+        self.graph = Graph.from_edge_list(
+            [
+                ("A", "B", 4),
+                ("A", "C", 2),
+                ("B", "C", 1),
+                ("C", "D", 3),
+            ]
+        )
 
     def test_dijkstra(self):
         result = run_dijkstra(self.graph, "A")
@@ -39,9 +43,14 @@ class TestIntegration(unittest.TestCase):
         self.assertEqual(result.algorithm, "kruskal")
         self.assertEqual(result.total_weight, 6)
         self.assertEqual(len(result.edges), 3)
-        self.assertEqual({frozenset((u,v)) for u,v,_ in result.edges}, {
-            frozenset(("A","C")), frozenset(("B","C")), frozenset(("C","D")),
-        })
+        self.assertEqual(
+            {frozenset((u, v)) for u, v, _ in result.edges},
+            {
+                frozenset(("A", "C")),
+                frozenset(("B", "C")),
+                frozenset(("C", "D")),
+            },
+        )
 
     def test_algorithm_execution(self):
         dijkstra_result = run_dijkstra(self.graph, "A")
@@ -60,7 +69,7 @@ class TestIntegration(unittest.TestCase):
             run_bellman_ford(self.graph, "Z")
 
     def test_isolated_vertex_path(self):
-        graph = Graph.from_edge_list([(1,2,7)], vertices=[1,2,3])
+        graph = Graph.from_edge_list([(1, 2, 7)], vertices=[1, 2, 3])
         result = run_dijkstra(graph, 1)
         self.assertTrue(math.isinf(result.distances[3]))
         self.assertIsNone(result.path_to(3))
@@ -79,12 +88,12 @@ class TestIntegration(unittest.TestCase):
             run_bellman_ford(graph, "A")
 
     def test_kruskal_rejects_directed(self):
-        graph = Graph.from_edge_list([(0,1,1)], directed=True)
+        graph = Graph.from_edge_list([(0, 1, 1)], directed=True)
         with self.assertRaises(ValueError):
             run_kruskal(graph)
 
     def test_kruskal_rejects_disconnected(self):
-        graph = Graph.from_edge_list([(0,1,1)], vertices=[0,1,2])
+        graph = Graph.from_edge_list([(0, 1, 1)], vertices=[0, 1, 2])
         with self.assertRaises(ValueError):
             run_kruskal(graph)
 
@@ -100,6 +109,30 @@ class TestIntegration(unittest.TestCase):
         run_bellman_ford(self.graph, "A")
         run_kruskal(self.graph)
         self.assertEqual(self.graph.to_adjacency_list(), before)
+
+    def test_shortest_path_result_path_to_edge_cases(self):
+        """path_to for source-to-source and non-existent targets."""
+        result = run_dijkstra(self.graph, "A")
+        self.assertEqual(result.path_to("A"), ["A"])
+        self.assertIsNone(result.path_to("NONEXISTENT"))
+
+    def test_kruskal_single_vertex(self):
+        """Kruskal on single-vertex graph returns 0 edges and 0 weight."""
+        g = Graph()
+        g.add_vertex("A")
+        result = run_kruskal(g)
+        self.assertEqual(result.total_weight, 0)
+        self.assertEqual(result.edges, [])
+
+    def test_float_weights_through_integration(self):
+        """Float weights propagate accurately through Dijkstra and Bellman-Ford adapters."""
+        g = Graph()
+        g.add_edge("A", "B", 1.5)
+        g.add_edge("B", "C", 2.25)
+        d = run_dijkstra(g, "A")
+        b = run_bellman_ford(g, "A")
+        self.assertAlmostEqual(d.distances["C"], 3.75)
+        self.assertAlmostEqual(b.distances["C"], 3.75)
 
 
 if __name__ == "__main__":

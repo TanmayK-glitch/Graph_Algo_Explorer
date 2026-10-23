@@ -1,0 +1,5 @@
+# Self-loop counts as a cycle
+UNDIRECTED
+UNWEIGHTED
+A A
+A B

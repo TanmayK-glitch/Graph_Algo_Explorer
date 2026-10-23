@@ -4,43 +4,56 @@ import math
 import unittest
 
 from graph_integration.graph import Graph
-from src.algorithms.dijkstra import dijkstra
 from src.algorithms.bellman_ford import bellman_ford  # type: ignore[reportMissingImports]
+from src.algorithms.dijkstra import dijkstra
 from src.algorithms.kruskal import kruskal_mst  # type: ignore[reportMissingImports]
 
 
 class TestGraph(unittest.TestCase):
     def setUp(self):
-        self.g = Graph.from_edge_list([
-            ("A", "B", 4),
-            ("A", "C", 2),
-            ("B", "C", 1),
-            ("C", "D", 3),
-        ])
+        self.g = Graph.from_edge_list(
+            [
+                ("A", "B", 4),
+                ("A", "C", 2),
+                ("B", "C", 1),
+                ("C", "D", 3),
+            ]
+        )
 
     def test_adjacency_list(self):
-        self.assertEqual(self.g.to_adjacency_list(), {
-            "A": [("B", 4), ("C", 2)],
-            "B": [("A", 4), ("C", 1)],
-            "C": [("A", 2), ("B", 1), ("D", 3)],
-            "D": [("C", 3)],
-        })
+        self.assertEqual(
+            self.g.to_adjacency_list(),
+            {
+                "A": [("B", 4), ("C", 2)],
+                "B": [("A", 4), ("C", 1)],
+                "C": [("A", 2), ("B", 1), ("D", 3)],
+                "D": [("C", 3)],
+            },
+        )
 
     def test_matrix(self):
         vertices, matrix = self.g.to_adjacency_matrix()
         self.assertEqual(vertices, ["A", "B", "C", "D"])
-        self.assertEqual(matrix, [
-            [0, 4, 2, math.inf],
-            [4, 0, 1, math.inf],
-            [2, 1, 0, 3],
-            [math.inf, math.inf, 3, 0],
-        ])
+        self.assertEqual(
+            matrix,
+            [
+                [0, 4, 2, math.inf],
+                [4, 0, 1, math.inf],
+                [2, 1, 0, 3],
+                [math.inf, math.inf, 3, 0],
+            ],
+        )
 
     def test_edges_not_doubled(self):
-        self.assertEqual(self.g.to_edge_list(), [
-            ("A", "B", 4), ("A", "C", 2),
-            ("B", "C", 1), ("C", "D", 3),
-        ])
+        self.assertEqual(
+            self.g.to_edge_list(),
+            [
+                ("A", "B", 4),
+                ("A", "C", 2),
+                ("B", "C", 1),
+                ("C", "D", 3),
+            ],
+        )
         self.assertEqual((self.g.num_vertices, self.g.num_edges), (4, 4))
         self.assertAlmostEqual(self.g.density, 4 / 6)
 
@@ -109,17 +122,57 @@ class TestGraph(unittest.TestCase):
         mst, total = kruskal_mst(n, indexed_edges)
         self.assertEqual(total, 6)
         self.assertEqual(len(mst), n - 1)
-        self.assertEqual({frozenset((labels[u], labels[v])) for u, v, _ in mst}, {
-            frozenset(("A", "C")),
-            frozenset(("B", "C")),
-            frozenset(("C", "D")),
-        })
+        self.assertEqual(
+            {frozenset((labels[u], labels[v])) for u, v, _ in mst},
+            {
+                frozenset(("A", "C")),
+                frozenset(("B", "C")),
+                frozenset(("C", "D")),
+            },
+        )
 
     def test_negative_weight_supported_by_graph_but_not_dijkstra(self):
         g = Graph.from_edge_list([("A", "B", -2)], directed=True)
         self.assertEqual(bellman_ford(g.to_adjacency_list(), "A").distances["B"], -2)
         with self.assertRaises(ValueError):
             dijkstra(g.to_adjacency_list(), "A")
+
+    def test_density_boundaries(self):
+        """Density must be 0.0 for n < 2 and 1.0 for a complete graph."""
+        self.assertEqual(Graph().density, 0.0)
+        g1 = Graph()
+        g1.add_vertex("X")
+        self.assertEqual(g1.density, 0.0)
+        # Complete graph K3
+        k3 = Graph()
+        k3.add_edge("A", "B", 1)
+        k3.add_edge("B", "C", 2)
+        k3.add_edge("C", "A", 3)
+        self.assertEqual(k3.density, 1.0)
+
+    def test_from_adjacency_matrix_directed_asymmetric(self):
+        """Directed graphs can be built from asymmetric matrices."""
+        matrix = [[0, 5], [math.inf, 0]]
+        g = Graph.from_adjacency_matrix(["A", "B"], matrix, directed=True)
+        self.assertEqual(g.to_adjacency_list(), {"A": [("B", 5)], "B": []})
+
+    def test_from_adjacency_matrix_validation(self):
+        """Matrix must be square, match vertex count, and have zero diagonal."""
+        with self.assertRaises(ValueError):
+            Graph.from_adjacency_matrix(["A"], [[1]])  # Non-zero diagonal
+        with self.assertRaises(ValueError):
+            Graph.from_adjacency_matrix(["A", "B"], [[0, 1]])  # Non-square
+        with self.assertRaises(ValueError):
+            Graph.from_adjacency_matrix(["A", "A"], [[0, 0], [0, 0]])  # Duplicate vertex
+
+    def test_to_kruskal_input_single_vertex(self):
+        """Single vertex graph produces 0 edges for Kruskal."""
+        g = Graph()
+        g.add_vertex("A")
+        count, edges, labels = g.to_kruskal_input()
+        self.assertEqual(count, 1)
+        self.assertEqual(edges, [])
+        self.assertEqual(labels, ["A"])
 
 
 if __name__ == "__main__":

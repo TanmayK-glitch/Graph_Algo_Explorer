@@ -1,4 +1,3 @@
-
 """Kruskal's Minimum Spanning Tree algorithm.
 
 This module implements Kruskal's algorithm using the
@@ -16,8 +15,7 @@ from .dsu import DisjointSetUnion
 
 
 def kruskal_mst(
-    num_vertices: int,
-    edges: list[tuple[int, int, float | int]]
+    num_vertices: int, edges: list[tuple[int, int, float | int]]
 ) -> tuple[list[tuple[int, int, float | int]], float | int]:
     """Find the Minimum Spanning Tree of an undirected graph.
 
@@ -44,9 +42,8 @@ def kruskal_mst(
     if num_vertices < 0:
         raise ValueError("Number of vertices cannot be negative")
 
-    for u, v, weight in edges:
-        if not (0 <= u < num_vertices and
-                0 <= v < num_vertices):
+    for u, v, _weight in edges:
+        if not (0 <= u < num_vertices and 0 <= v < num_vertices):
             raise ValueError("Invalid vertex in edge")
 
     dsu = DisjointSetUnion(num_vertices)
@@ -58,7 +55,6 @@ def kruskal_mst(
     total_weight = 0
 
     for u, v, weight in sorted_edges:
-
         # union() returns False if adding the edge
         # would create a cycle.
         if dsu.union(u, v):

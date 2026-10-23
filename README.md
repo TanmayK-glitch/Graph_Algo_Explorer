@@ -1,228 +1,234 @@
 # Graph Algorithms Explorer
 
-A modular, tested Python implementation of fundamental graph algorithms,
-starting with **Dijkstra's shortest-path algorithm** backed by a
-custom **Min Heap**.
+Graph Algorithms Explorer is a Python-based mini-project that implements graph data structures and algorithms for graph traversal, shortest paths, connectivity, cycle detection, and minimum spanning trees.
 
-> **Status:** Standalone module — designed for easy integration into a
-> larger graph-algorithm project.
+The project brings together two worklets: **Worklet 1**, which focuses on graph representations and fundamental graph algorithms, and **Worklet 2**, which focuses on weighted graph algorithms, data structures, integration, and benchmarking.
 
----
+The project is currently focused on backend algorithms and integration. An interactive visualization interface is a planned next step.
 
-## Implemented Algorithms
+## 1. Project Structure
 
-| Algorithm | Module | Complexity |
-|-----------|--------|------------|
-| **Min Heap** (binary) | `src/algorithms/min_heap.py` | insert O(log n), extract O(log n), peek O(1) |
-| **Dijkstra's Algorithm** | `src/algorithms/dijkstra.py` | O((V + E) log V) |
-
----
-
-## Project Structure
-
-```
+```text
 Graph_Algo_Explorer/
+├── worklet1/
+│   ├── algorithms/
+│   ├── graph/
+│   ├── io/
+│   ├── tests/
+│   ├── sample_graphs/
+│   ├── docs/
+│   └── README.md
 ├── src/
-│   ├── __init__.py
 │   └── algorithms/
-│       ├── __init__.py
-│       ├── min_heap.py        # Reusable MinHeap class
-│       └── dijkstra.py        # Dijkstra + path reconstruction
+│       ├── min_heap.py
+│       ├── dijkstra.py
+│       ├── bellman_ford.py
+│       ├── dijkstra_radix.py
+│       ├── radix_heap.py
+│       ├── kruskal.py
+│       └── dsu.py
+├── graph_integration/
+│   ├── graph.py
+│   ├── integration.py
+│   ├── benchmark.py
+│   └── worklet1_adapter.py
 ├── tests/
-│   ├── test_min_heap.py       # MinHeap unit tests
-│   └── test_dijkstra.py       # Dijkstra unit tests
-├── examples/
-│   ├── __init__.py
-│   └── example_dijkstra.py    # Runnable demo
-├── pyproject.toml             # Project metadata & Ruff config
-├── .gitignore
+├── pyproject.toml
 └── README.md
 ```
 
----
+The structure above summarizes the main components; individual files and directories may vary as the project evolves.
 
-## Requirements
+## 2. Worklet 1: Graph Representations and Fundamental Algorithms
 
-- **Python 3.10+**
-- No external runtime dependencies.
-- [Ruff](https://docs.astral.sh/ruff/) (optional) for formatting and
-  linting.
+Worklet 1 provides graph data structures and algorithms for common graph operations.
 
----
+### Graph representations
 
-## Quick Start
+* Adjacency List
+* Adjacency Matrix
 
-### MinHeap Usage
+### Algorithms
+
+* Breadth-First Search (BFS)
+* Depth-First Search (DFS)
+* Connected Components
+* Cycle Detection
+* Topological Sort
+* Strongly Connected Components (SCC)
+* Bipartite Graph Checking
+
+Worklet 1 also includes graph input utilities, sample graphs, tests, and documentation.
+
+## 3. Worklet 2: Weighted Graph Algorithms
+
+Worklet 2 provides algorithms and data structures for shortest-path and minimum-spanning-tree problems.
+
+### Algorithms and data structures
+
+* Dijkstra's shortest-path algorithm
+* Custom binary Min Heap
+* Bellman–Ford shortest-path algorithm
+* Kruskal's Minimum Spanning Tree algorithm
+* Disjoint Set Union (DSU)
+* Radix Heap and Radix-based Dijkstra implementations
+
+### Additional components
+
+* Shared weighted graph model
+* Algorithm integration wrappers
+* Graph representation conversions
+* Benchmarking utilities
+* Unit and reference-verification tests
+
+Dijkstra requires non-negative edge weights. Bellman–Ford supports negative edge weights and can detect negative-weight cycles. Kruskal operates on weighted, undirected graphs to compute a minimum spanning tree or forest.
+
+## 4. Integration Between the Worklets
+
+Worklet 1 and Worklet 2 use different graph representations. The integration layer allows supported graph inputs to be passed to the existing weighted graph algorithms without rewriting their implementations.
+
+### Worklet 2 shared graph model
+
+`graph_integration/graph.py` defines the shared graph representation used by Worklet 2.
+
+### Integration wrappers
+
+`graph_integration/integration.py` provides wrappers for:
+
+* `run_dijkstra(graph, source)`
+* `run_bellman_ford(graph, source)`
+* `run_kruskal(graph)`
+
+These wrappers execute the corresponding algorithms and provide standardized result objects.
+
+### Worklet 1 adapter
+
+`graph_integration/worklet1_adapter.py` provides:
 
 ```python
-from src.algorithms.min_heap import MinHeap
-
-heap = MinHeap()
-heap.insert(5, "task-low")
-heap.insert(1, "task-high")
-heap.insert(3, "task-mid")
-
-print(heap.peek_min())  # (1, 'task-high')
-print(heap.extract_min())  # (1, 'task-high')
-print(len(heap))  # 2
+to_worklet2_graph(graph)
 ```
 
-**Key properties:**
+The adapter converts a supported Worklet 1 graph into Worklet 2's graph representation.
 
-- Stores `(priority, item)` pairs; lower priority = extracted first.
-- Supports negative and duplicate priorities.
-- Uses an insertion counter as a tie-breaker so **items are never
-  compared** — any hashable or unhashable object is safe.
-- Raises `IndexError` on peek/extract from an empty heap.
+It preserves vertex labels, edge weights, directedness, and isolated vertices. Since Worklet 2's graph model requires weighted edges and does not support self-loops, the adapter explicitly rejects unweighted graphs and graphs containing self-loops.
 
-### Dijkstra Usage
+The adapter has been tested with both Worklet 1 adjacency-list and adjacency-matrix graph implementations.
 
-#### Graph Input Format
-
-A graph is a `dict` mapping each vertex to a list of
-`(neighbor, weight)` tuples:
+### Example: Convert and execute Dijkstra
 
 ```python
-graph = {
-    "A": [("B", 4), ("C", 1)],
-    "B": [("D", 1)],
-    "C": [("B", 2), ("D", 5)],
-    "D": [],
-}
-```
+from worklet1.graph import AdjacencyListGraph
+from graph_integration.worklet1_adapter import to_worklet2_graph
+from graph_integration.integration import run_dijkstra
 
-Vertices that appear only as neighbors (no key in the dict) are
-treated as having no outgoing edges.
+graph = AdjacencyListGraph(directed=False, weighted=True)
 
-#### Computing Shortest Paths
+graph.add_edge("A", "B", 4)
+graph.add_edge("A", "C", 1)
+graph.add_edge("C", "B", 2)
+graph.add_edge("B", "D", 1)
 
-```python
-from src.algorithms.dijkstra import dijkstra, reconstruct_path
+converted_graph = to_worklet2_graph(graph)
+result = run_dijkstra(converted_graph, "A")
 
-result = dijkstra(graph, "A")
-
-# Distances from source
 print(result.distances)
-# {'A': 0, 'B': 3, 'C': 1, 'D': 4}
-
-# Shortest path from A to D
-path = reconstruct_path(result, "D")
-print(path)  # ['A', 'C', 'B', 'D']
+print(result.path_to("D"))
 ```
 
-#### Return Values
+This example demonstrates the graph conversion and execution workflow. The adapter currently bridges Worklet 1 graph inputs to Worklet 2's Dijkstra, Bellman–Ford, and Kruskal implementations; it does not automatically make every algorithm interchangeable between the worklets.
 
-`dijkstra()` returns a **`DijkstraResult`** dataclass:
+## 5. Min Heap
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `source` | `Hashable` | The source vertex |
-| `distances` | `dict[Vertex, float]` | Shortest distance from source (`math.inf` if unreachable) |
-| `predecessors` | `dict[Vertex, Vertex \| None]` | Predecessor on the shortest path (`None` for source and unreachable vertices) |
+The custom `MinHeap` stores `(priority, item)` entries and removes the entry with the smallest priority first.
 
-#### Path Reconstruction
+| Operation          | Time complexity |
+| ------------------ | --------------: |
+| Insert             |        O(log n) |
+| Extract minimum    |        O(log n) |
+| Peek minimum       |            O(1) |
+| Check empty / size |            O(1) |
 
-```python
-path = reconstruct_path(result, target)
+A monotonically increasing insertion counter breaks ties between equal priorities, so heap items do not need to be mutually comparable.
+
+## 6. Dijkstra's Algorithm
+
+Dijkstra computes shortest distances from a source vertex in a weighted graph with non-negative edge weights.
+
+It uses the Min Heap to process the currently closest candidate vertex efficiently.
+
+For an adjacency-list graph using a binary Min Heap:
+
+* **Time complexity:** O((V + E) log V)
+* **Space complexity:** O(V + E)
+
+Here, V is the number of vertices and E is the number of edges.
+
+The algorithm returns shortest distances and predecessor information for reconstructing paths. Unreachable vertices have infinite distance.
+
+## 7. Testing and Validation
+
+Run commands from the repository root.
+
+### Complete test suite
+
+```powershell
+py -m pytest -q
 ```
 
-- Returns a `list` of vertices from source to target (inclusive).
-- Returns `None` if the target is unreachable.
-- A source-to-source query returns `[source]`.
+### Worklet 1 tests
 
----
-
-## Running the Example
-
-```bash
-python -m examples.example_dijkstra
+```powershell
+py -m pytest .\worklet1\tests -v
 ```
 
-Expected output:
+### Adapter tests
 
-```
-Shortest distances from 'A':
-  A: 0.0
-  B: 3.0
-  C: 1.0
-  D: 4.0
-
-Shortest path from 'A' to 'D':
-  A -> C -> B -> D
-  Total distance: 4.0
+```powershell
+py -m pytest .\tests\test_worklet1_adapter.py -v
 ```
 
----
+### Ruff lint check
 
-## Running the Tests
-
-```bash
-python -m unittest discover -s tests -v
+```powershell
+py -m ruff check .
 ```
 
----
+### Ruff formatting check
 
-## Ruff Formatting & Linting
-
-```bash
-# Format
-ruff format .
-
-# Check formatting (CI-friendly)
-ruff format --check .
-
-# Lint
-ruff check .
-
-# Lint and auto-fix
-ruff check --fix .
+```powershell
+py -m ruff format --check .
 ```
 
-Ruff is configured in `pyproject.toml`.
+### Latest reported validation
 
----
+The following results were reported during development:
 
-## Algorithm Details
+* Complete project test suite: **1,170 passed, 11 subtests passed**
+* Worklet 1 tests run independently: **984 passed**
+* Worklet 1 adapter tests: **7 passed**
+* Ruff lint check: **All checks passed**
 
-### Min Heap
+These results come from separate test runs and should not be added together as a count of unique tests. Run the commands above again after any further changes.
 
-A standard binary min-heap stored in a flat list. Each entry is a
-`(priority, counter, item)` triple internally; the counter provides
-FIFO ordering for equal priorities without comparing items.
+## 8. Current Status and Future Work
 
-| Operation | Time |
-|-----------|------|
-| `insert` | O(log n) |
-| `extract_min` | O(log n) |
-| `peek_min` | O(1) |
-| `is_empty` | O(1) |
-| `size` / `len` | O(1) |
+### Completed
 
-### Dijkstra's Algorithm
+* Graph representations and fundamental graph algorithms
+* Weighted graph algorithms and supporting data structures
+* Shared graph model and integration wrappers
+* Adapter between supported Worklet 1 and Worklet 2 graph representations
+* Automated tests for algorithms and adapter behavior
+* Benchmarking utilities
 
-Single-source shortest paths using a binary min-heap as the priority
-queue. The algorithm:
+### Planned
 
-1. Initialises the source distance to 0 and all others to ∞.
-2. Pushes the source onto the heap.
-3. Extracts the minimum-distance vertex and relaxes its outgoing edges.
-4. Records predecessors whenever a shorter path is found.
-5. Skips stale heap entries (vertices already finalised).
+* Interactive graph visualization
+* Graph creation and editing through a user interface
+* Algorithm selection and execution through the interface
+* Visualizing traversal order, shortest paths, and minimum spanning trees
+* Step-by-step algorithm execution
+* A consistent frontend/backend interface, if required by the final application design
 
-**Complexity:** O((V + E) log V) with an adjacency list and binary
-heap. Each edge relaxation may insert a new heap entry; the heap never
-exceeds O(E) entries, and since log E ∈ O(log V) for simple graphs,
-each operation costs O(log V).
-
-**Non-negative weights required.** The algorithm raises `ValueError`
-if any edge weight is negative.
-
----
-
-## Future Integration
-
-The public API (`dijkstra`, `reconstruct_path`, `MinHeap`) is
-deliberately simple and accepts plain Python dicts and lists. When
-integrating into a larger project (e.g., with a shared `Graph` class),
-a thin adapter can translate between representations without changing
-the core algorithm.
+The goal is to evolve the current algorithm-focused project into an interactive environment where users can create graphs, run algorithms, and understand their behavior visually.

@@ -1,0 +1,6 @@
+# SCCs: {A,B} {C} {D}
+DIRECTED
+UNWEIGHTED
+A B
+B A
+C D

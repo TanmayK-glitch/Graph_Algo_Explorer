@@ -1,0 +1,7 @@
+# Diamond DAG (directed, unweighted)
+DIRECTED
+UNWEIGHTED
+A B
+A C
+B D
+C D
