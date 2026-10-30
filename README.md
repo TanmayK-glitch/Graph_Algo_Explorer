@@ -211,7 +211,55 @@ The following results were reported during development:
 
 These results come from separate test runs and should not be added together as a count of unique tests. Run the commands above again after any further changes.
 
-## 8. Current Status and Future Work
+## 8. Interactive visualization
+
+The visualization layer is implemented in `app.py` and the `visualization/`
+package. It uses the existing Worklet 1 graph and algorithms for traversal and
+structural objectives, and the existing Worklet 1 adapter plus Worklet 2
+integration wrappers for Dijkstra, Bellman-Ford, and Kruskal.
+
+### Installation and launch
+
+From the repository root:
+
+```powershell
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+python -m streamlit run app.py
+```
+
+The application accepts one edge per line:
+
+```text
+A B 4
+A C 2
+B C 1
+```
+
+Use two fields for unweighted graphs and three fields for weighted graphs.
+Single-token lines add isolated vertices, blank lines and `#` comments are
+ignored, and duplicate/conflicting edges and invalid weights are reported
+without crashing the app.
+
+The deterministic recommendation engine considers the objective, direction,
+weighting, negative weights, and the implemented algorithm preconditions. The
+available objectives are shortest path, traversal, minimum spanning tree,
+connectivity, cycle detection, topological ordering, and bipartite checking.
+The supported algorithm choices are BFS, Dijkstra, Bellman-Ford, Kruskal,
+connected components, strongly connected components, cycle detection,
+topological sort, and the bipartite test. Unsupported configurations are
+explained instead of being executed.
+
+The PyVis view highlights selected source/destination vertices, shortest paths,
+MST edges, and traversal vertices when the returned result contains that
+information. Results are displayed from the actual algorithm return objects.
+The current limitations are that shortest paths require a source, Kruskal
+requires a connected undirected weighted graph, and negative undirected
+shortest-path graphs are rejected because they contain a negative two-way
+cycle.
+
+## 9. Current Status and Future Work
 
 ### Completed
 
@@ -221,14 +269,12 @@ These results come from separate test runs and should not be added together as a
 * Adapter between supported Worklet 1 and Worklet 2 graph representations
 * Automated tests for algorithms and adapter behavior
 * Benchmarking utilities
+* Streamlit and PyVis visualization layer with automatic recommendations
 
 ### Planned
 
-* Interactive graph visualization
-* Graph creation and editing through a user interface
-* Algorithm selection and execution through the interface
-* Visualizing traversal order, shortest paths, and minimum spanning trees
 * Step-by-step algorithm execution
+* Graph creation and editing beyond edge-list input
 * A consistent frontend/backend interface, if required by the final application design
 
 The goal is to evolve the current algorithm-focused project into an interactive environment where users can create graphs, run algorithms, and understand their behavior visually.
