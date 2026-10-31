@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from typing import Any
 
 import streamlit as st
 import streamlit.components.v1 as components
@@ -12,11 +13,40 @@ from visualization.input_parser import InputFormatError, parse_edge_list
 from visualization.recommendation import OBJECTIVES, recommend_algorithm
 from visualization.renderer import render_graph
 
-EXAMPLES = {
-    "Weighted shortest path": "A B 4\nA C 2\nB C 1\nC D 3",
-    "Directed DAG": "A B 1\nA C 1\nB D 1\nC D 1",
-    "Undirected traversal": "A B\nA C\nB D\nC D\nE",
+EXAMPLES: dict[str, dict[str, Any]] = {
+    "Weighted shortest path": {
+        "directed": True,
+        "weighted": True,
+        "objective": "Shortest path",
+        "edge_text": "A B 4\nA C 2\nB C 1\nC D 3",
+    },
+    "Directed DAG": {
+        "directed": True,
+        "weighted": False,
+        "objective": "Topological ordering",
+        "edge_text": "A B\nA C\nB D\nC D",
+    },
+    "Undirected traversal": {
+        "directed": False,
+        "weighted": False,
+        "objective": "Explore or traverse",
+        "edge_text": "A B\nA C\nB D\nC D\nE",
+    },
 }
+
+
+def _apply_example(example: str) -> None:
+    if example in EXAMPLES:
+        preset = EXAMPLES[example]
+        st.session_state["directed"] = preset["directed"]
+        st.session_state["weighted"] = preset["weighted"]
+        st.session_state["objective"] = preset["objective"]
+        st.session_state["edge_text"] = preset["edge_text"]
+
+
+def _on_example_change() -> None:
+    _apply_example(st.session_state.example_selector)
+
 
 st.set_page_config(page_title="Graph Algorithms Explorer", layout="wide")
 st.title("Graph Algorithms Explorer")
@@ -26,14 +56,24 @@ st.caption(
 
 with st.sidebar:
     st.header("Graph input")
-    example_name = st.selectbox("Load an example", ["Custom", *EXAMPLES])
-    directed = st.checkbox("Directed graph")
-    weighted = st.checkbox("Weighted graph")
-    objective = st.selectbox("Objective", OBJECTIVES)
+    example_name = st.selectbox(
+        "Load an example",
+        ["Custom", *EXAMPLES],
+        key="example_selector",
+        on_change=_on_example_change,
+    )
+    if st.session_state.get("_last_example") != example_name:
+        if example_name in EXAMPLES:
+            _apply_example(example_name)
+        st.session_state["_last_example"] = example_name
+
+    directed = st.checkbox("Directed graph", key="directed")
+    weighted = st.checkbox("Weighted graph", key="weighted")
+    objective = st.selectbox("Objective", OBJECTIVES, key="objective")
     edge_text = st.text_area(
         "Edges (source target [weight], one per line)",
-        value=EXAMPLES.get(example_name, ""),
         height=180,
+        key="edge_text",
         help="Use two fields for unweighted edges or three fields for weighted edges. Lines with one token add isolated vertices. # starts a comment.",
     )
 
@@ -42,86 +82,147 @@ try:
 except InputFormatError as exc:
     st.error(str(exc))
     st.stop()
+    parsed = None
 
-recommendation = recommend_algorithm(
-    objective,
-    parsed.graph,
-    has_negative_weight=parsed.has_negative_weight,
-)
+if parsed is not None:
+    recommendation = recommend_algorithm(
+        objective,
+        parsed.graph,
+        has_negative_weight=parsed.has_negative_weight,
+    )
 
-st.subheader("Recommendation")
-st.write(f"**Algorithm:** {recommendation.algorithm or 'Unsupported'}")
-st.write(recommendation.explanation)
-st.write("**Properties considered:** " + ", ".join(recommendation.properties))
-for limitation in recommendation.limitations:
-    st.info(limitation)
+    st.subheader("Recommendation")
+    st.write(f"**Algorithm:** {recommendation.algorithm or 'Unsupported'}")
+    st.write(recommendation.explanation)
+    st.write("**Properties considered:** " + ", ".join(recommendation.properties))
+    for limitation in recommendation.limitations:
+        st.info(limitation)
 
-needs_source = recommendation.algorithm in {"BFS", "DFS", "dijkstra", "bellman_ford"}
-source = None
-target = None
-if needs_source:
-    source = st.selectbox("Source vertex", parsed.graph.vertices)
-if objective == "Shortest path" and recommendation.supported:
-    target = st.selectbox("Destination vertex", parsed.graph.vertices)
-
-input_key = (directed, weighted, objective, edge_text, source, target)
-if "run_token" not in st.session_state:
-    st.session_state.run_token = None
-run_clicked = st.button(
-    "Run Algorithm", type="primary", disabled=not recommendation.supported
-)
-if run_clicked:
-    try:
-        result = execute_algorithm(
-            parsed.graph, recommendation.algorithm, source=source
+    if objective == "Explore or traverse":
+        algorithm_options = ["BFS", "DFS"]
+    elif objective == "Shortest path":
+        if not parsed.graph.is_weighted:
+            algorithm_options = ["BFS"]
+        elif recommendation.supported and not parsed.has_negative_weight:
+            algorithm_options = ["dijkstra", "bellman_ford"]
+        elif recommendation.supported and parsed.has_negative_weight:
+            algorithm_options = ["bellman_ford"]
+        else:
+            algorithm_options = []
+    elif objective == "Minimum spanning tree":
+        algorithm_options = ["kruskal"] if recommendation.supported else []
+    elif objective == "Check connectivity":
+        algorithm_options = (
+            ["SCC"] if parsed.graph.is_directed else ["ConnectedComponents"]
         )
-    except (ValueError, RuntimeError, KeyError) as exc:
-        st.error(f"Algorithm could not be executed: {exc}")
+    elif objective == "Detect cycles":
+        algorithm_options = ["CycleDetection"]
+    elif objective == "Topological ordering":
+        algorithm_options = ["TopologicalSort"] if recommendation.supported else []
+    elif objective == "Check bipartite":
+        algorithm_options = ["BipartiteTest"] if recommendation.supported else []
     else:
-        st.session_state.run_token = (
-            input_key,
-            parsed.graph,
-            recommendation.algorithm,
-            result,
-            target,
-        )
+        algorithm_options = []
 
-if (
-    st.session_state.run_token is not None
-    and st.session_state.run_token[0] == input_key
-):
-    _, _, algorithm, result, result_target = st.session_state.run_token
-    st.subheader("Visualization")
-    try:
-        components.html(
-            render_graph(parsed.graph, result, source=source, target=result_target),
-            height=680,
-            scrolling=False,
-        )
-    except RuntimeError as exc:
-        st.error(str(exc))
+    if not algorithm_options:
+        algorithm_options = ["Unsupported"]
+        _dropdown_disabled = True
+    else:
+        _dropdown_disabled = False
 
-    st.subheader("Results")
-    st.write(f"**Algorithm:** {algorithm}")
-    if hasattr(result, "path_to") and result_target is not None:
-        path = result.path_to(result_target)
-        st.write({"source": source, "destination": result_target, "path": path})
-        if path is not None:
-            st.write({"distance": result.distances[result_target]})
-        st.write(
-            {
-                "distances": {
-                    vertex: distance
-                    for vertex, distance in result.distances.items()
-                    if not math.isinf(distance)
+    default_index = (
+        algorithm_options.index(recommendation.algorithm)
+        if recommendation.algorithm in algorithm_options
+        else 0
+    )
+
+    def _label(algo: str) -> str:
+        if algo == recommendation.algorithm and len(algorithm_options) > 1:
+            return f"{algo} (Recommended)"
+        return algo
+
+    selected_algorithm = st.selectbox(
+        "Select Algorithm",
+        algorithm_options,
+        index=default_index,
+        format_func=_label,
+        disabled=_dropdown_disabled,
+    )
+
+    needs_source = selected_algorithm in {"BFS", "DFS", "dijkstra", "bellman_ford"}
+    source = None
+    target = None
+    if needs_source:
+        source = st.selectbox("Source vertex", parsed.graph.vertices)
+    if objective == "Shortest path" and not _dropdown_disabled:
+        target = st.selectbox("Destination vertex", parsed.graph.vertices)
+
+    input_key = (
+        directed,
+        weighted,
+        objective,
+        edge_text,
+        selected_algorithm,
+        source,
+        target,
+    )
+    if "run_token" not in st.session_state:
+        st.session_state.run_token = None
+    run_clicked = st.button(
+        "Run Algorithm", type="primary", disabled=_dropdown_disabled
+    )
+    if run_clicked:
+        try:
+            result = execute_algorithm(parsed.graph, selected_algorithm, source=source)
+        except (ValueError, RuntimeError, KeyError) as exc:
+            st.error(f"Algorithm could not be executed: {exc}")
+        else:
+            st.session_state.run_token = (
+                input_key,
+                parsed.graph,
+                selected_algorithm,
+                result,
+                target,
+            )
+
+    if (
+        st.session_state.run_token is not None
+        and st.session_state.run_token[0] == input_key
+    ):
+        _, _, algorithm, result, result_target = st.session_state.run_token
+        st.subheader("Visualization")
+        try:
+            components.html(
+                render_graph(parsed.graph, result, source=source, target=result_target),
+                height=750,
+                scrolling=False,
+            )
+        except RuntimeError as exc:
+            st.error(str(exc))
+
+        st.subheader("Results")
+        st.write(f"**Algorithm:** {algorithm}")
+        if hasattr(result, "path_to") and result_target is not None:
+            path = result.path_to(result_target)
+            st.json({"source": source, "destination": result_target, "path": path})
+            if path is not None:
+                st.json({"distance": result.distances[result_target]})
+            st.json(
+                {
+                    "distances": {
+                        vertex: distance
+                        for vertex, distance in result.distances.items()
+                        if not math.isinf(distance)
+                    }
                 }
-            }
-        )
-    elif hasattr(result, "edges"):
-        st.write({"selected_edges": result.edges, "total_weight": result.total_weight})
-    else:
-        st.write(result.primary_output)
-        if result.metadata:
-            st.write(result.metadata)
-        if not result.success:
-            st.warning(result.error_message)
+            )
+        elif hasattr(result, "edges"):
+            st.json(
+                {"selected_edges": result.edges, "total_weight": result.total_weight}
+            )
+        else:
+            st.write(result.primary_output)
+            if result.metadata:
+                st.json(result.metadata)
+            if not result.success:
+                st.warning(result.error_message)
