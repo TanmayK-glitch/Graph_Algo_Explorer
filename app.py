@@ -12,6 +12,38 @@ from visualization.execution import execute_algorithm
 from visualization.input_parser import InputFormatError, parse_edge_list
 from visualization.recommendation import OBJECTIVES, recommend_algorithm
 from visualization.renderer import render_graph
+from visualization.results_view import render_human_results
+
+# ---------------------------------------------------------------------------
+# Centralized display-name mapping
+# ---------------------------------------------------------------------------
+# Internal algorithm identifiers (used by recommendation.py and execution.py)
+# are mapped to human-readable labels for every user-facing surface.
+
+DISPLAY_NAMES: dict[str, str] = {
+    "BFS": "BFS",
+    "DFS": "DFS",
+    "dijkstra": "Dijkstra",
+    "bellman_ford": "Bellman-Ford",
+    "kruskal": "Kruskal",
+    "ConnectedComponents": "Connected Components",
+    "SCC": "Strongly Connected Components",
+    "CycleDetection": "Cycle Detection",
+    "TopologicalSort": "Topological Sort",
+    "BipartiteTest": "Bipartite Test",
+}
+
+
+def _display_name(algo: str | None) -> str:
+    """Return a user-facing display name for an internal algorithm identifier."""
+    if algo is None:
+        return "Unsupported"
+    return DISPLAY_NAMES.get(algo, algo)
+
+
+# ---------------------------------------------------------------------------
+# Example presets
+# ---------------------------------------------------------------------------
 
 EXAMPLES: dict[str, dict[str, Any]] = {
     "Weighted shortest path": {
@@ -48,14 +80,22 @@ def _on_example_change() -> None:
     _apply_example(st.session_state.example_selector)
 
 
+# ---------------------------------------------------------------------------
+# Page chrome
+# ---------------------------------------------------------------------------
+
 st.set_page_config(page_title="Graph Algorithms Explorer", layout="wide")
 st.title("Graph Algorithms Explorer")
 st.caption(
-    "Enter a graph, receive a rule-based recommendation, and inspect the actual algorithm result."
+    "Enter a graph, receive a rule-based recommendation, and inspect the algorithm result."
 )
 
+# ---------------------------------------------------------------------------
+# Sidebar - graph input
+# ---------------------------------------------------------------------------
+
 with st.sidebar:
-    st.header("Graph input")
+    st.header("Graph Input")
     example_name = st.selectbox(
         "Load an example",
         ["Custom", *EXAMPLES],
@@ -74,8 +114,13 @@ with st.sidebar:
         "Edges (source target [weight], one per line)",
         height=180,
         key="edge_text",
-        help="Use two fields for unweighted edges or three fields for weighted edges. Lines with one token add isolated vertices. # starts a comment.",
+        help="Use two fields for unweighted edges or three fields for weighted edges. "
+        "Lines with one token add isolated vertices. # starts a comment.",
     )
+
+# ---------------------------------------------------------------------------
+# Parse input
+# ---------------------------------------------------------------------------
 
 try:
     parsed = parse_edge_list(edge_text, directed=directed, weighted=weighted)
@@ -84,6 +129,10 @@ except InputFormatError as exc:
     st.stop()
     parsed = None
 
+# ---------------------------------------------------------------------------
+# Main panel
+# ---------------------------------------------------------------------------
+
 if parsed is not None:
     recommendation = recommend_algorithm(
         objective,
@@ -91,13 +140,15 @@ if parsed is not None:
         has_negative_weight=parsed.has_negative_weight,
     )
 
+    # --- Recommendation section -------------------------------------------
     st.subheader("Recommendation")
-    st.write(f"**Algorithm:** {recommendation.algorithm or 'Unsupported'}")
+    st.write(f"**Algorithm:** {_display_name(recommendation.algorithm)}")
     st.write(recommendation.explanation)
     st.write("**Properties considered:** " + ", ".join(recommendation.properties))
     for limitation in recommendation.limitations:
         st.info(limitation)
 
+    # --- Build eligible algorithm list ------------------------------------
     if objective == "Explore or traverse":
         algorithm_options = ["BFS", "DFS"]
     elif objective == "Shortest path":
@@ -137,9 +188,11 @@ if parsed is not None:
     )
 
     def _label(algo: str) -> str:
+        """Format algorithm option with display name and recommended tag."""
+        name = _display_name(algo)
         if algo == recommendation.algorithm and len(algorithm_options) > 1:
-            return f"{algo} (Recommended)"
-        return algo
+            return f"{name} (Recommended)"
+        return name
 
     selected_algorithm = st.selectbox(
         "Select Algorithm",
@@ -149,6 +202,7 @@ if parsed is not None:
         disabled=_dropdown_disabled,
     )
 
+    # --- Source / destination selection ------------------------------------
     needs_source = selected_algorithm in {"BFS", "DFS", "dijkstra", "bellman_ford"}
     source = None
     target = None
@@ -157,6 +211,7 @@ if parsed is not None:
     if objective == "Shortest path" and not _dropdown_disabled:
         target = st.selectbox("Destination vertex", parsed.graph.vertices)
 
+    # --- Run button -------------------------------------------------------
     input_key = (
         directed,
         weighted,
@@ -185,11 +240,22 @@ if parsed is not None:
                 target,
             )
 
+    # --- Results & Visualization ------------------------------------------
     if (
         st.session_state.run_token is not None
         and st.session_state.run_token[0] == input_key
     ):
         _, _, algorithm, result, result_target = st.session_state.run_token
+        st.subheader("Results")
+        render_human_results(
+            algorithm,
+            result,
+            parsed.graph,
+            source=source,
+            target=result_target,
+            objective=objective,
+        )
+
         st.subheader("Visualization")
         try:
             components.html(
@@ -200,29 +266,32 @@ if parsed is not None:
         except RuntimeError as exc:
             st.error(str(exc))
 
-        st.subheader("Results")
-        st.write(f"**Algorithm:** {algorithm}")
-        if hasattr(result, "path_to") and result_target is not None:
-            path = result.path_to(result_target)
-            st.json({"source": source, "destination": result_target, "path": path})
-            if path is not None:
-                st.json({"distance": result.distances[result_target]})
-            st.json(
-                {
-                    "distances": {
-                        vertex: distance
-                        for vertex, distance in result.distances.items()
-                        if not math.isinf(distance)
+        with st.expander("Advanced Details (Technical Output)", expanded=False):
+            st.write(f"**Algorithm:** {_display_name(algorithm)}")
+            if hasattr(result, "path_to") and result_target is not None:
+                path = result.path_to(result_target)
+                st.json({"source": source, "destination": result_target, "path": path})
+                if path is not None:
+                    st.json({"distance": result.distances[result_target]})
+                st.json(
+                    {
+                        "distances": {
+                            vertex: distance
+                            for vertex, distance in result.distances.items()
+                            if not math.isinf(distance)
+                        }
                     }
-                }
-            )
-        elif hasattr(result, "edges"):
-            st.json(
-                {"selected_edges": result.edges, "total_weight": result.total_weight}
-            )
-        else:
-            st.write(result.primary_output)
-            if result.metadata:
-                st.json(result.metadata)
-            if not result.success:
-                st.warning(result.error_message)
+                )
+            elif hasattr(result, "edges"):
+                st.json(
+                    {
+                        "selected_edges": result.edges,
+                        "total_weight": result.total_weight,
+                    }
+                )
+            else:
+                st.write(result.primary_output)
+                if result.metadata:
+                    st.json(result.metadata)
+                if not result.success:
+                    st.warning(result.error_message)

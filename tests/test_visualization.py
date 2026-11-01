@@ -207,3 +207,77 @@ def test_layout_config_adaptive():
         < xlarge["gravitationalConstant"]
     )
     assert small["avoidOverlap"] >= med["avoidOverlap"] >= large["avoidOverlap"]
+
+
+# ---------------------------------------------------------------------------
+# Display-name mapping tests
+# ---------------------------------------------------------------------------
+
+
+def test_display_names_cover_all_recommendation_identifiers():
+    """Every internal algorithm identifier used by the recommendation engine
+    must have a corresponding entry in the centralized DISPLAY_NAMES mapping."""
+    from app import DISPLAY_NAMES
+
+    # Collect every algorithm identifier the recommendation engine can return.
+    objectives_and_graphs = [
+        ("Shortest path", False, False, "A B"),
+        ("Shortest path", True, True, "A B 2"),
+        ("Shortest path", True, True, "A B -2"),
+        ("Explore or traverse", False, False, "A B"),
+        ("Minimum spanning tree", False, True, "A B 2"),
+        ("Check connectivity", True, False, "A B"),
+        ("Check connectivity", False, False, "A B"),
+        ("Detect cycles", False, False, "A B"),
+        ("Topological ordering", True, False, "A B"),
+        ("Check bipartite", False, False, "A B"),
+    ]
+    returned_identifiers = set()
+    for objective, directed, weighted, text in objectives_and_graphs:
+        parsed = parse_edge_list(text, directed=directed, weighted=weighted)
+        rec = recommend_algorithm(
+            objective,
+            parsed.graph,
+            has_negative_weight=parsed.has_negative_weight,
+        )
+        if rec.algorithm is not None:
+            returned_identifiers.add(rec.algorithm)
+
+    assert returned_identifiers, "Expected at least one algorithm identifier"
+    for identifier in returned_identifiers:
+        assert identifier in DISPLAY_NAMES, (
+            f"Algorithm identifier {identifier!r} is missing from DISPLAY_NAMES"
+        )
+
+
+@pytest.mark.parametrize(
+    ("internal_id", "expected_display"),
+    [
+        ("dijkstra", "Dijkstra"),
+        ("bellman_ford", "Bellman-Ford"),
+        ("kruskal", "Kruskal"),
+        ("BFS", "BFS"),
+        ("DFS", "DFS"),
+        ("ConnectedComponents", "Connected Components"),
+        ("SCC", "Strongly Connected Components"),
+        ("CycleDetection", "Cycle Detection"),
+        ("TopologicalSort", "Topological Sort"),
+        ("BipartiteTest", "Bipartite Test"),
+    ],
+)
+def test_display_name_formatting(internal_id, expected_display):
+    from app import _display_name
+
+    assert _display_name(internal_id) == expected_display
+
+
+def test_display_name_returns_unsupported_for_none():
+    from app import _display_name
+
+    assert _display_name(None) == "Unsupported"
+
+
+def test_display_name_passes_through_unknown():
+    from app import _display_name
+
+    assert _display_name("some_future_algo") == "some_future_algo"

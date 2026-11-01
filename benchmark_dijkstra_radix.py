@@ -133,7 +133,7 @@ def main():
             print(
                 f"{vertices:8d} {edge_count:8d} "
                 f"{standard_ms:12.4f} {radix_ms:12.4f} "
-                f"{speedup:9.2f}x {str(correct):>10}"
+                f"{speedup:9.2f}x {correct!s:>10}"
             )
 
     print("\nSpeedup > 1.00x means Radix Dijkstra was faster.")
